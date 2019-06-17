@@ -3,7 +3,8 @@ import random
 import copy
 from string import punctuation
 from pytorch_pretrained_bert import BertTokenizer, BertModel, BertForMaskedLM
-
+import os
+from bert_serving.client import BertClient
 import itertools
 
 from pytorch_pretrained_bert.tokenization_gpt2 import GPT2Tokenizer
@@ -18,7 +19,7 @@ K = TypeVar('K')
 V = TypeVar('V')
 MEDIUM_MODEL = '../gpt2-pytorch-pretrained'
 
-gpus = [0, 1]
+os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
@@ -175,7 +176,8 @@ class GPT2LanguageModel(LanguageModel):
         return output
 model_345M = GPT2LanguageModel(model_name='345M')
 gpt2_tokenizer = GPT2Tokenizer.from_pretrained(MEDIUM_MODEL)
-
+# bert client 真香
+bc = BertClient()
 # bert拜拜 你真不好用
 # bert_path = '/root/xcn/bert_pytorch'
 # bert_tokenizer = BertTokenizer.from_pretrained(bert_path)
@@ -184,10 +186,13 @@ gpt2_tokenizer = GPT2Tokenizer.from_pretrained(MEDIUM_MODEL)
 
 
 
-sentence = 'we types proposals'
-keywords = gpt2_tokenizer.encode(sentence)
-gpt2_token = [gpt2_tokenizer.decoder[ids].replace('\u0120', '')
-              for ids in gpt2_tokenizer.encode(sentence)]
+sentence = 'In this task, we would like to generate a sentence.'
+keywords = ' task we sentence'
+sentence_semantic = bc.encode([sentence])[0]
+keywords = gpt2_tokenizer.encode(keywords)
+print(keywords)
+# gpt2_token = [gpt2_tokenizer.decoder[ids].replace('\u0120', '')
+#               for ids in gpt2_tokenizer.encode(sentence)]
 
 
 
@@ -195,7 +200,19 @@ p_insert = 1/3
 p_delete = 1/3
 p_replace = 1/3
 
+def EulerDistance(x:list=[], y:list=[]):
+    assert len(x) == len(y)
+    sum = 0.0
+    for idx in range(len(x)):
+        sum += (x[idx] - y[idx]) ** 2
+    return sum
 
+def ManhattanDistance(x:list=[], y:list=[]):
+    assert len(x) == len(y)
+    sum = 0.0
+    for idx in range(len(x)):
+        sum += abs(x[idx] - y[idx])
+    return sum
 class PiOrigin:
     def LM_propility(self, x) -> float:
         return x
@@ -207,6 +224,21 @@ class PiKeyWords(PiOrigin):
             if keyword not in x:
                 return 0
         return 1
+class PiSemanticKeyWords(PiOrigin):
+    def __init__(self, semantic_list:list=[], keywords:list=[]):
+        self.semantic_list = semantic_list
+        self.keywords = keywords
+    def compute_pi(self, x:list=[]):
+        # print(keywords)
+        # print(x)
+        for keyword in self.keywords:
+            if keyword not in x:
+                return 0
+        x_str = gpt2_tokenizer.decode(x)
+        x_semantic = bc.encode([x_str])[0]
+        return EulerDistance(x_semantic, sentence_semantic)
+
+
 class PiFactory:
     @staticmethod
     def typename(name):
@@ -215,8 +247,8 @@ class PiFactory:
         else:
             return None
 
-pi = PiKeyWords(keywords)
-
+# pi = PiKeyWords(keywords)
+pi = PiSemanticKeyWords(sentence_semantic, keywords)
 
 def random_index(prob_list:list) -> int:
     # 按概率返回一个随机的index
