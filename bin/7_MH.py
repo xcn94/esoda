@@ -186,8 +186,9 @@ bc = BertClient()
 
 
 
-sentence = 'In this task, we would like to generate a sentence.'
-keywords = ' task we sentence'
+sentence = 'In the past decade, the Sino-British economic and financial ' \
+           'dialogue mechanism has achieved great success.'
+keywords = ' dialogue success'
 sentence_semantic = bc.encode([sentence])[0]
 keywords = gpt2_tokenizer.encode(keywords)
 print(keywords)
@@ -206,13 +207,13 @@ def EulerDistance(x:list=[], y:list=[]):
     for idx in range(len(x)):
         sum += (x[idx] - y[idx]) ** 2
     return sum
-
 def ManhattanDistance(x:list=[], y:list=[]):
     assert len(x) == len(y)
     sum = 0.0
     for idx in range(len(x)):
         sum += abs(x[idx] - y[idx])
     return sum
+
 class PiOrigin:
     def LM_propility(self, x) -> float:
         return x
@@ -237,8 +238,7 @@ class PiSemanticKeyWords(PiOrigin):
         x_str = gpt2_tokenizer.decode(x)
         x_semantic = bc.encode([x_str])[0]
         return EulerDistance(x_semantic, sentence_semantic)
-
-
+        # return ManhattanDistance(x_semantic, sentence_semantic)
 class PiFactory:
     @staticmethod
     def typename(name):
@@ -314,7 +314,6 @@ def A_replace(x:str, idx) -> str:
         return x_prop
     else:
         return x
-
 def A_insert(x:str, idx) -> str:
     x_prop, g_prob, _, _ = G_replace(x, idx, isInsert=True)
     x_tokens = gpt2_tokenizer.encode(x)
@@ -328,7 +327,6 @@ def A_insert(x:str, idx) -> str:
         return x_prop
     else:
         return x
-
 def A_delete(x:str, idx) -> str:
     x_prop, deleted_ids = G_delete(x, idx)
     x_tokens = gpt2_tokenizer.encode(x)
